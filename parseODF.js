@@ -103,10 +103,10 @@ const handleElement = async (element, styles, zip, layout) => {
     case "draw:frame":
     {
       htmlTag = "div";
-      const width = parseFloat(element["svg:width"]) / pageWidth * 100;
-      const height = parseFloat(element["svg:height"]) / pageHeight * 100;
-      const x = parseFloat(element["svg:x"]) / pageWidth * 100;
-      const y = parseFloat(element["svg:y"]) / pageHeight * 100;
+      const width = (parseFloat(element["svg:width"]) / pageWidth * 100).toFixed(3);
+      const height = (parseFloat(element["svg:height"]) / pageHeight * 100).toFixed(3);
+      const x = (parseFloat(element["svg:x"]) / pageWidth * 100).toFixed(3);
+      const y = (parseFloat(element["svg:y"]) / pageHeight * 100).toFixed(3);
       css += `position:absolute;left:${x}%;top:${y}%;width:${width}%;height:${height}%;`;
       break;
     }
