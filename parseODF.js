@@ -57,7 +57,10 @@ const parseStyle = (style) => {
 
 };
 
-const handleElement = async (element, styles, zip) => {
+const handleElement = async (element, styles, zip, layout) => {
+
+  const pageWidth = parseFloat(layout["fo:page-width"]);
+  const pageHeight = parseFloat(layout["fo:page-height"]);
 
   let htmlTag = element._tag.split(":").pop();
   let attributes = "";
@@ -67,12 +70,12 @@ const handleElement = async (element, styles, zip) => {
     if (typeof child === "string") {
       content += child;
     } else {
-      content += await handleElement(child, styles, zip);
+      content += await handleElement(child, styles, zip, layout);
     }
   }
 
   const styleName = element[element._tag.split(":")[0] + ":style-name"];
-  const style = styles.find(c => c["style:name"] === styleName);
+  const style = styles.document.find(c => c["style:name"] === styleName);
   let css = parseStyle(style);
 
   switch (element._tag) {
@@ -87,7 +90,6 @@ const handleElement = async (element, styles, zip) => {
       htmlTag = "td";
       css += "border:1px solid black;";
       break;
-    case "draw:frame": htmlTag = "div"; break;
     case "draw:image":
     {
       htmlTag = "img";
@@ -96,6 +98,16 @@ const handleElement = async (element, styles, zip) => {
       const base64 = zip.extractBase64(path);
       attributes += ` src="data:${mime};base64,${base64}"`;
       css += "max-width:100%;";
+      break;
+    }
+    case "draw:frame":
+    {
+      htmlTag = "div";
+      const width = parseFloat(element["svg:width"]) / pageWidth * 100;
+      const height = parseFloat(element["svg:height"]) / pageHeight * 100;
+      const x = parseFloat(element["svg:x"]) / pageWidth * 100;
+      const y = parseFloat(element["svg:y"]) / pageHeight * 100;
+      css += `position:absolute;left:${x}%;top:${y}%;width:${width}%;height:${height}%;`;
       break;
     }
     default: break;
@@ -112,11 +124,23 @@ const extractDocument = async (bytes, callback) => {
   try {
 
     const documentXML = zip.extractText("content.xml");
-    const doc = parseXML(documentXML);
+    const stylesXML = zip.extractText("styles.xml");
+    const document = parseXML(documentXML);
+    const styles = parseXML(stylesXML);
 
-    const styles = getChild(doc[0], "office:automatic-styles")._children;
+    const styleGroups = {
+      document: getChild(document[0], "office:automatic-styles")._children,
+      main: getChild(styles[0], "office:styles")._children,
+      automatic: getChild(styles[0], "office:automatic-styles")._children,
+      master: getChild(styles[0], "office:master-styles")._children
+    };
 
-    return await callback(zip, doc, styles);
+    const masterPage = styleGroups.master.find(c => c._tag === "style:master-page");
+    const pageLayoutName = masterPage["style:page-layout-name"];
+    const pageStyle = styleGroups.automatic.find(c => c._tag === "style:page-layout" && c["style:name"] === pageLayoutName);
+    const pageLayoutProperties = getChild(pageStyle, "style:page-layout-properties");
+
+    return await callback(zip, document, styleGroups, pageLayoutProperties);
 
   } catch (e) {
 
@@ -130,12 +154,12 @@ const extractDocument = async (bytes, callback) => {
 };
 
 const parseODT = async (bytes) => {
-  return await extractDocument(bytes, async (zip, doc, styles) => {
+  return await extractDocument(bytes, async (zip, doc, styles, layout) => {
     let outputHTML = "";
 
     const elements = getChild(getChild(doc[0], "office:body"), "office:text")._children;
     for (const element of elements) {
-      outputHTML += await handleElement(element, styles, zip);
+      outputHTML += await handleElement(element, styles, zip, layout);
     }
 
     return outputHTML;
@@ -143,8 +167,8 @@ const parseODT = async (bytes) => {
 };
 
 const parseODP = async (bytes) => {
-  return await extractDocument(bytes, async (zip, doc, styles) => {
-    let outputHTML = `<style>.__page{width:100%;aspect-ratio:16/9}</style>`;
+  return await extractDocument(bytes, async (zip, doc, styles, layout) => {
+    let outputHTML = `<style>.__page{position:relative;width:100%;aspect-ratio:16/9}</style>`;
 
     const pages = getChild(getChild(doc[0], "office:body"), "office:presentation")
       ._children.filter(c => c._tag === "draw:page");
@@ -152,7 +176,7 @@ const parseODP = async (bytes) => {
     for (const page of pages) {
       let pageHTML = "";
       for (const element of page._children) {
-        pageHTML += await handleElement(element, styles, zip);
+        pageHTML += await handleElement(element, styles, zip, layout);
       }
       outputHTML += `<div class="__page">${pageHTML}</div>`;
     }
