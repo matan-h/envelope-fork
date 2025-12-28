@@ -1,0 +1,164 @@
+import parseXML from "./parseXML.js";
+import ZIPExtractor from "./extractZIP.js";
+
+const getChild = (parent, tag) => {
+  if (!parent) return parent;
+  return parent._children.find(c => c._tag === tag);
+};
+
+const parseStyle = (style) => {
+
+  const textProperties = getChild(style, "style:text-properties");
+  const paragraphProperties = getChild(style, "style:paragraph-properties");
+
+  let css = "";
+
+  if (textProperties) {
+
+    let prop;
+    if (prop = textProperties["fo:font-weight"]) {
+      css += `font-weight:${prop};`;
+    }
+    if (prop = textProperties["fo:font-style"]) {
+      css += `font-style:${prop};`;
+    }
+    if (prop = textProperties["style:text-underline-style"]) {
+      // Hack, prevents colliding with line-through style
+      css += `border-bottom:1px ${prop};`;
+    }
+    if (prop = textProperties["style:text-line-through-style"]) {
+      css += `text-decoration:line-through ${prop};`;
+    }
+    if (prop = textProperties["fo:color"]) {
+      css += `color:${prop};`;
+    }
+    if (prop = textProperties["fo:background-color"]) {
+      css += `background-color:${prop};`;
+    }
+    if (prop = textProperties["fo:font-size"]) {
+      css += `font-size:${prop};`;
+    }
+    if (prop = textProperties["style:font-name"]) {
+      css += `font-family:${prop};`;
+    }
+
+  }
+
+  if (paragraphProperties) {
+
+    let prop;
+    if (prop = paragraphProperties["fo:text-align"]) {
+      css += `text-align:${prop};`;
+    }
+
+  }
+
+  return css;
+
+};
+
+const handleElement = async (element, styles, zip) => {
+
+  let htmlTag = element._tag.split(":").pop();
+  let attributes = "";
+  let content = "";
+
+  for (const child of element._children) {
+    if (typeof child === "string") {
+      content += child;
+    } else {
+      content += await handleElement(child, styles, zip);
+    }
+  }
+
+  const styleName = element[element._tag.split(":")[0] + ":style-name"];
+  const style = styles.find(c => c["style:name"] === styleName);
+  let css = parseStyle(style);
+
+  switch (element._tag) {
+    case "text:h": htmlTag = "h1"; break;
+    case "text:list": htmlTag = "ul"; break;
+    case "text:list-item": htmlTag = "li"; break;
+    case "table:table":
+      css += "width:100%;border-collapse:collapse";
+      break;
+    case "table:table-row": htmlTag = "tr"; break;
+    case "table:table-cell":
+      htmlTag = "td";
+      css += "border:1px solid black;";
+      break;
+    case "draw:frame": htmlTag = "div"; break;
+    case "draw:image":
+    {
+      htmlTag = "img";
+      const mime = element["draw:mime-type"];
+      const path = element["xlink:href"];
+      const base64 = zip.extractBase64(path);
+      attributes += ` src="data:${mime};base64,${base64}"`;
+      css += "max-width:100%;";
+      break;
+    }
+    default: break;
+  }
+
+  return `<${htmlTag}${css ? ` style="${css}"` : ""}${attributes}>${content}</${htmlTag}>`;
+
+};
+
+const extractDocument = async (bytes, callback) => {
+
+  const zip = new ZIPExtractor(bytes);
+
+  try {
+
+    const documentXML = zip.extractText("content.xml");
+    const doc = parseXML(documentXML);
+
+    const styles = getChild(doc[0], "office:automatic-styles")._children;
+
+    return await callback(zip, doc, styles);
+
+  } catch (e) {
+
+    console.error("Failed to parse ODP, using thumbnail instead.\n", e);
+
+    const base64 = zip.extractBase64("Thumbnails/thumbnail.png");
+    return `<img src="data:image/png;base64,${base64}" style="width:100%"></img>`;
+
+  }
+
+};
+
+const parseODT = async (bytes) => {
+  return await extractDocument(bytes, async (zip, doc, styles) => {
+    let outputHTML = "";
+
+    const elements = getChild(getChild(doc[0], "office:body"), "office:text")._children;
+    for (const element of elements) {
+      outputHTML += await handleElement(element, styles, zip);
+    }
+
+    return outputHTML;
+  });
+};
+
+const parseODP = async (bytes) => {
+  return await extractDocument(bytes, async (zip, doc, styles) => {
+    let outputHTML = `<style>.__page{width:100%;aspect-ratio:16/9}</style>`;
+
+    const pages = getChild(getChild(doc[0], "office:body"), "office:presentation")
+      ._children.filter(c => c._tag === "draw:page");
+
+    for (const page of pages) {
+      let pageHTML = "";
+      for (const element of page._children) {
+        pageHTML += await handleElement(element, styles, zip);
+      }
+      outputHTML += `<div class="__page">${pageHTML}</div>`;
+    }
+
+    return outputHTML;
+  });
+};
+
+export { parseODT, parseODP };
