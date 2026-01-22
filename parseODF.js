@@ -10,6 +10,7 @@ const parseStyle = (style) => {
 
   const textProperties = getChild(style, "style:text-properties");
   const paragraphProperties = getChild(style, "style:paragraph-properties");
+  const cellProperties = getChild(style, "style:table-cell-properties");
 
   let css = "";
 
@@ -53,6 +54,15 @@ const parseStyle = (style) => {
 
   }
 
+  if (cellProperties) {
+
+    let prop;
+    if (prop = cellProperties["fo:background-color"]) {
+      css += `background-color:${prop};`;
+    }
+
+  }
+
   return css;
 
 };
@@ -83,13 +93,19 @@ const handleElement = async (element, styles, zip, layout) => {
     case "text:list": htmlTag = "ul"; break;
     case "text:list-item": htmlTag = "li"; break;
     case "table:table":
-      css += "width:100%;border-collapse:collapse";
+      css += "width:100%;border-collapse:collapse;margin-bottom:1em;";
       break;
     case "table:table-row": htmlTag = "tr"; break;
     case "table:table-cell":
+    {
       htmlTag = "td";
+      const rowspan = element["table:number-rows-spanned"] || 0;
+      const colspan = element["table:number-columns-spanned"] || 0;
+      attributes += ` rowspan="${rowspan}"`;
+      attributes += ` colspan="${colspan}"`;
       css += "border:1px solid black;";
       break;
+    }
     case "draw:image":
     {
       htmlTag = "img";
@@ -190,4 +206,17 @@ const parseODP = async (bytes) => {
   });
 };
 
-export { parseODT, parseODP };
+const parseODS = async (bytes) => {
+  return await extractDocument(bytes, async (zip, doc, styles, layout) => {
+    let outputHTML = "";
+
+    const elements = getChild(getChild(doc[0], "office:body"), "office:spreadsheet")._children;
+    for (const element of elements) {
+      outputHTML += await handleElement(element, styles, zip, layout);
+    }
+
+    return outputHTML;
+  });
+};
+
+export { parseODT, parseODP, parseODS };

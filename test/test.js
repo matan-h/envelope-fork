@@ -1,6 +1,6 @@
 import parseDOCX from "../parseDOCX.js";
 import parsePPTX from "../parsePPTX.js";
-import { parseODT, parseODP } from "../parseODF.js";
+import { parseODT, parseODP, parseODS } from "../parseODF.js";
 
 import { readFile } from "node:fs/promises";
 
@@ -8,7 +8,8 @@ const handlers = {
   "docx": parseDOCX,
   "pptx": parsePPTX,
   "odp": parseODP,
-  "odt": parseODT
+  "odt": parseODT,
+  "ods": parseODS
 };
 
 const path = process.argv[2] || "";
