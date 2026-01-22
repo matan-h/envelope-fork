@@ -105,9 +105,14 @@ const handleElement = async (element, styles, zip, layout) => {
       htmlTag = "div";
       const width = (parseFloat(element["svg:width"]) / pageWidth * 100).toFixed(3);
       const height = (parseFloat(element["svg:height"]) / pageHeight * 100).toFixed(3);
-      const x = (parseFloat(element["svg:x"]) / pageWidth * 100).toFixed(3);
-      const y = (parseFloat(element["svg:y"]) / pageHeight * 100).toFixed(3);
-      css += `position:absolute;left:${x}%;top:${y}%;width:${width}%;height:${height}%;`;
+      const x = element["svg:x"] && (parseFloat(element["svg:x"]) / pageWidth * 100).toFixed(3);
+      const y = element["svg:y"] && (parseFloat(element["svg:y"]) / pageHeight * 100).toFixed(3);
+      if (x || y) {
+        css += "position:absolute;";
+        if (x) css += `left:${x}%`;
+        if (y) css += `top:${y}%`;
+      }
+      css += `width:${width}%;height:${height}%;`;
       break;
     }
     default: break;
