@@ -3,7 +3,7 @@ Lightweight office document-to-HTML parser written in pure JavaScript. Compatibl
 
 Currently supports:
 - [x] DOCX
-- [ ] PPTX
+- [x] PPTX _(partially)_
 - [ ] XLSX
 - [x] ODT
 - [x] ODP _(partially)_
