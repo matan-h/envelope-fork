@@ -165,7 +165,7 @@ const extractDocument = async (bytes, callback) => {
 
   } catch (e) {
 
-    console.error("Failed to parse ODP, using thumbnail instead.\n", e);
+    console.error("Failed to parse document, using thumbnail instead.\n", e);
 
     const base64 = zip.extractBase64("Thumbnails/thumbnail.png");
     return `<img src="data:image/png;base64,${base64}" style="width:100%"></img>`;
