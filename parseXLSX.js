@@ -19,11 +19,13 @@ const parseXLSX = async (bytes) => {
   const workbookXML = zip.extractText("xl/workbook.xml");
   const relationshipsXML = zip.extractText("xl/_rels/workbook.xml.rels");
   const contentTypesXML = zip.extractText("[Content_Types].xml");
+  const sharedStringsXML = zip.extractText("xl/sharedStrings.xml");
 
   const workbook = parseXML(workbookXML);
   const media = {
     rels: parseXML(relationshipsXML)[0]._children,
     types: parseXML(contentTypesXML)[0]._children.filter(c => c._tag === "Override"),
+    strings: parseXML(sharedStringsXML)[0]._children.map(c => getText(getChild(c, "t"))),
     zip
   };
 
@@ -52,7 +54,9 @@ const parseXLSX = async (bytes) => {
 
       const cells = row._children.filter(c => c._tag === "c");
       for (const cell of cells) {
-        const value = getText(getChild(cell, "v"));
+        let value = getText(getChild(cell, "v"));
+        const type = cell.t;
+        if (type === "s") value = media.strings[parseInt(value)];
         if (!value) continue;
         outputHTML += `<td>${value}</td>`;
       }
