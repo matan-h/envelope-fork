@@ -1,5 +1,6 @@
 import parseDOCX from "../parseDOCX.js";
 import parsePPTX from "../parsePPTX.js";
+import parseXLSX from "../parseXLSX.js";
 import { parseODT, parseODP, parseODS } from "../parseODF.js";
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -7,6 +8,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const handlers = {
   "docx": parseDOCX,
   "pptx": parsePPTX,
+  "xlsx": parseXLSX,
   "odp": parseODP,
   "odt": parseODT,
   "ods": parseODS
