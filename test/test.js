@@ -2,7 +2,7 @@ import parseDOCX from "../parseDOCX.js";
 import parsePPTX from "../parsePPTX.js";
 import { parseODT, parseODP, parseODS } from "../parseODF.js";
 
-import { readFile } from "node:fs/promises";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const handlers = {
   "docx": parseDOCX,
@@ -14,8 +14,9 @@ const handlers = {
 
 const path = process.argv[2] || "";
 const extension = path.split(".").at(-1);
-const bytes = await readFile(path);
-const html = await handlers[extension](bytes);
+const bytes = readFileSync(path);
 
-const output = `<div style="width: 50%; margin-left: 25%">${html}</div>`;
-await Bun.write("output.html", output);
+handlers[extension](bytes).then(html => {
+  const output = `<div style="width: 50%; margin-left: 25%">${html}</div>`;
+  writeFileSync("output.html", output);
+});
