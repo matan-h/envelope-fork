@@ -41,7 +41,9 @@ const processParagraph = async (p, media, listLevel) => {
     pStyle += `text-align:${direction};`;
   });
   // Handle unordered list depth
-  useProperty(pProperties, ["w:numPr", "w:ilvl", "w:val"], (level) => {
+  const numberingId = getChild(getChild(pProperties, "w:numPr"), "w:numId")?.["w:val"];
+  console.log(numberingId);
+  if (numberingId != 0) useProperty(pProperties, ["w:numPr", "w:ilvl", "w:val"], (level) => {
     if (isNaN(level)) return;
     level = Number(level);
 
