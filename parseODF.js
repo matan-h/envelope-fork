@@ -125,8 +125,8 @@ const handleElement = async (element, styles, zip, layout) => {
       const y = element["svg:y"] && (parseFloat(element["svg:y"]) / pageHeight * 100).toFixed(3);
       if (x || y) {
         css += "position:absolute;";
-        if (x) css += `left:${x}%`;
-        if (y) css += `top:${y}%`;
+        if (x) css += `left:${x}%;`;
+        if (y) css += `top:${y}%;`;
       }
       css += `width:${width}%;height:${height}%;`;
       break;
