@@ -75,6 +75,7 @@ const handleElement = async (element, styles, zip, layout) => {
   let htmlTag = element._tag.split(":").pop();
   let attributes = "";
   let content = "";
+  let repeat = 0;
 
   for (const child of element._children) {
     if (typeof child === "string") {
@@ -99,6 +100,7 @@ const handleElement = async (element, styles, zip, layout) => {
     case "table:table-cell":
     {
       htmlTag = "td";
+      repeat = (Number(element["table:number-columns-repeated"]) || 0) - 1;
       const rowspan = element["table:number-rows-spanned"] || 0;
       const colspan = element["table:number-columns-spanned"] || 0;
       attributes += ` rowspan="${rowspan}"`;
@@ -134,7 +136,11 @@ const handleElement = async (element, styles, zip, layout) => {
     default: break;
   }
 
-  return `<${htmlTag}${css ? ` style="${css}"` : ""}${attributes}>${content}</${htmlTag}>`;
+  const elementHTML = `<${htmlTag}${css ? ` style="${css}"` : ""}${attributes}>${content}</${htmlTag}>`;
+  let output = elementHTML;
+  for (let i = 0; i < repeat; i ++) output += elementHTML;
+
+  return output;
 
 };
 
