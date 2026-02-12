@@ -19,6 +19,10 @@ const useProperty = (parent, path, found, notFound = null) => {
   else if (notFound) notFound();
 };
 
+const emuToPt = (emu) => {
+  return Number((emu / 12700).toFixed(3));
+};
+
 const processParagraph = async (p, media, listLevel) => {
 
   let html = "";
@@ -42,7 +46,6 @@ const processParagraph = async (p, media, listLevel) => {
   });
   // Handle unordered list depth
   const numberingId = getChild(getChild(pProperties, "w:numPr"), "w:numId")?.["w:val"];
-  console.log(numberingId);
   if (numberingId != 0) useProperty(pProperties, ["w:numPr", "w:ilvl", "w:val"], (level) => {
     if (isNaN(level)) return;
     level = Number(level);
@@ -69,10 +72,14 @@ const processParagraph = async (p, media, listLevel) => {
           const target = media.rels.find(c => c.Id === embed)?.Target;
           if (!target) return resolve();
 
+          let width = "100%", height = "100%";
+          useProperty(r, ["w:drawing", "wp:anchor", "wp:extent", "cx"], (cx) => width = emuToPt(cx) + "pt");
+          useProperty(r, ["w:drawing", "wp:anchor", "wp:extent", "cy"], (cy) => height = emuToPt(cy) + "pt");
+
           const path = "word/" + target;
           const base64 = media.zip.extractBase64(path);
           const mime = media.types.find(c => c.PartName === "/" + path)?.ContentType;
-          html += `<img src="data:${mime};base64,${base64}" style="max-width:100%"></img>`;
+          html += `<img src="data:${mime};base64,${base64}" style="width:${width};height:${height}"></img>`;
         } finally {
           resolve();
         }
