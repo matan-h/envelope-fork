@@ -86,7 +86,7 @@ const handleElement = async (element, styles, zip, layout) => {
   }
 
   const styleName = element[element._tag.split(":")[0] + ":style-name"];
-  const style = styles.document.find(c => c["style:name"] === styleName);
+  const style = styles.find(c => c["style:name"] === styleName);
   let css = parseStyle(style);
 
   switch (element._tag) {
@@ -155,19 +155,23 @@ const extractDocument = async (bytes, callback) => {
     const document = parseXML(documentXML);
     const styles = parseXML(stylesXML);
 
-    const styleGroups = {
-      document: getChild(document[0], "office:automatic-styles")._children,
-      main: getChild(styles[0], "office:styles")._children,
-      automatic: getChild(styles[0], "office:automatic-styles")._children,
-      master: getChild(styles[0], "office:master-styles")._children
+    const collectStyles = (element) => {
+      const found = [];
+      for (const child of element._children) {
+        if (typeof child !== "object") continue;
+        if ("style:name" in child) found.push(child);
+        else found.push(...collectStyles(child));
+      }
+      return found;
     };
+    const allStyles = collectStyles(styles[0]).concat(collectStyles(document[0]));
 
-    const masterPage = styleGroups.master.find(c => c._tag === "style:master-page");
+    const masterPage = allStyles.find(c => c._tag === "style:master-page");
     const pageLayoutName = masterPage["style:page-layout-name"];
-    const pageStyle = styleGroups.automatic.find(c => c._tag === "style:page-layout" && c["style:name"] === pageLayoutName);
+    const pageStyle = allStyles.find(c => c._tag === "style:page-layout" && c["style:name"] === pageLayoutName);
     const pageLayoutProperties = getChild(pageStyle, "style:page-layout-properties");
 
-    return await callback(zip, document, styleGroups, pageLayoutProperties);
+    return await callback(zip, document, allStyles, pageLayoutProperties);
 
   } catch (e) {
 
