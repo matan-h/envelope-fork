@@ -10,6 +10,8 @@ const parseStyle = (style) => {
 
   const textProperties = getChild(style, "style:text-properties");
   const paragraphProperties = getChild(style, "style:paragraph-properties");
+  const columnProperties = getChild(style, "style:table-column-properties");
+  const rowProperties = getChild(style, "style:table-row-properties");
   const cellProperties = getChild(style, "style:table-cell-properties");
 
   let css = "";
@@ -63,6 +65,24 @@ const parseStyle = (style) => {
 
   }
 
+  if (rowProperties) {
+
+    let prop;
+    if (prop = rowProperties["style:row-height"]) {
+      css += `height:${prop};`;
+    }
+
+  }
+
+  if (columnProperties) {
+
+    let prop;
+    if (prop = columnProperties["style:column-width"]) {
+      css += `width:${prop};`;
+    }
+
+  }
+
   return css;
 
 };
@@ -77,6 +97,9 @@ const handleElement = async (element, styles, zip, layout) => {
   let content = "";
   let css = "";
   let repeat = 0;
+
+  let outputBefore = "";
+  let outputAfter = "";
 
   for (const child of element._children) {
     if (typeof child === "string") {
@@ -93,9 +116,13 @@ const handleElement = async (element, styles, zip, layout) => {
     case "text:h": htmlTag = "h1"; break;
     case "text:list": htmlTag = "ul"; break;
     case "text:list-item": htmlTag = "li"; break;
-    case "table:table":
-      css += "width:100%;border-collapse:collapse;margin-bottom:1em;";
+    case "table:table-column": {
+      htmlTag = "th";
+      outputBefore = "<tr>"
+      outputAfter = "</tr>";
+      repeat = (Number(element["table:number-columns-repeated"]) || 0) - 1;
       break;
+    }
     case "table:table-row": htmlTag = "tr"; break;
     case "table:table-cell":
     {
@@ -105,7 +132,7 @@ const handleElement = async (element, styles, zip, layout) => {
       const colspan = element["table:number-columns-spanned"] || 0;
       attributes += ` rowspan="${rowspan}"`;
       attributes += ` colspan="${colspan}"`;
-      css += "border:1px solid black;";
+      content = `<div>${content}</div>`;
       break;
     }
     case "draw:image":
@@ -140,7 +167,7 @@ const handleElement = async (element, styles, zip, layout) => {
   let output = elementHTML;
   for (let i = 0; i < repeat; i ++) output += elementHTML;
 
-  return output;
+  return outputBefore + output + outputAfter;
 
 };
 
@@ -188,7 +215,15 @@ const extractDocument = async (bytes, callback) => {
         margin-bottom: 1em;
       }
       td {
+        background: #fff;
         border: 1px solid black;
+      }
+      td > div {
+        white-space: nowrap;
+        overflow: visible;
+      }
+      td * {
+        margin: 0;
       }
     `;
 
