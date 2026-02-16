@@ -75,6 +75,7 @@ const handleElement = async (element, styles, zip, layout) => {
   let htmlTag = element._tag.split(":").pop();
   let attributes = "";
   let content = "";
+  let css = "";
   let repeat = 0;
 
   for (const child of element._children) {
@@ -86,8 +87,7 @@ const handleElement = async (element, styles, zip, layout) => {
   }
 
   const styleName = element[element._tag.split(":")[0] + ":style-name"];
-  const style = styles.find(c => c["style:name"] === styleName);
-  let css = parseStyle(style);
+  if (styleName) attributes += ` class="${styleName}"`;
 
   switch (element._tag) {
     case "text:h": htmlTag = "h1"; break;
@@ -171,7 +171,36 @@ const extractDocument = async (bytes, callback) => {
     const pageStyle = allStyles.find(c => c._tag === "style:page-layout" && c["style:name"] === pageLayoutName);
     const pageLayoutProperties = getChild(pageStyle, "style:page-layout-properties");
 
-    return await callback(zip, document, allStyles, pageLayoutProperties);
+    const cssClasses = {};
+    for (const element of allStyles) {
+      const className = element["style:name"];
+      if (!(className in cssClasses)) {
+        cssClasses[className] = "";
+      }
+      cssClasses[className] += parseStyle(element);
+    }
+
+    let css = `<style>
+      table {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1em;
+      }
+      td {
+        border: 1px solid black;
+      }
+    `;
+
+    for (const className in cssClasses) {
+      if (!cssClasses[className]) continue;
+      css += `.${className}{${cssClasses[className]}}\n`;
+    }
+    css += "</style>";
+
+    const html = await callback(zip, document, allStyles, pageLayoutProperties);
+
+    return css + html;
 
   } catch (e) {
 
