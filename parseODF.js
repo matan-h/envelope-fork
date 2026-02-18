@@ -88,6 +88,9 @@ const parseStyle = (style) => {
 };
 
 const handleElement = async (element, styles, zip, layout) => {
+      // look at https://github.com/LibreOffice/libetonyek/blob/c3ac91b8cf6cdb83b777b480c6c000b9542f3add/src/lib/IWORKCollector.cpp#L975 for reference.
+      // they built a library to convert Apple iWork documents to open
+
 
   const pageWidth = parseFloat(layout["fo:page-width"]);
   const pageHeight = parseFloat(layout["fo:page-height"]);
@@ -116,6 +119,13 @@ const handleElement = async (element, styles, zip, layout) => {
     case "text:h": htmlTag = "h1"; break;
     case "text:list": htmlTag = "ul"; break;
     case "text:list-item": htmlTag = "li"; break;
+    case "text:p":
+{
+  htmlTag = "p";
+  // each paragraph that contains frames should act like new 0,0 coordinate.
+  css += "position:relative; margin:0; padding:0; min-height:1em;";
+  break;
+}
     case "table:table-column": {
       htmlTag = "th";
       outputBefore = "<tr>"
@@ -147,17 +157,22 @@ const handleElement = async (element, styles, zip, layout) => {
     }
     case "draw:frame":
     {
+      css += "position:absolute;"; // force all frames to be absolute, without that browser might not listen to z-index
+
+      // the sizes are in inches, and displaied as "<N>in", so css are happy
+
       htmlTag = "div";
-      const width = (parseFloat(element["svg:width"]) / pageWidth * 100).toFixed(3);
-      const height = (parseFloat(element["svg:height"]) / pageHeight * 100).toFixed(3);
-      const x = element["svg:x"] && (parseFloat(element["svg:x"]) / pageWidth * 100).toFixed(3);
-      const y = element["svg:y"] && (parseFloat(element["svg:y"]) / pageHeight * 100).toFixed(3);
-      if (x || y) {
-        css += "position:absolute;";
-        if (x) css += `left:${x}%;`;
-        if (y) css += `top:${y}%;`;
-      }
-      css += `width:${width}%;height:${height}%;`;
+      const width = element["svg:width"]
+      const height = element["svg:height"]
+      const x = element["svg:x"]
+      const y = element["svg:y"]
+      const zindex = element["draw:z-index"]
+      css+=`z-index:${zindex};`
+
+      if (x) css += `left:${x||0};`;
+
+      if (y) css += `top:${y||0};`;
+      css += `width:${width};height:${height};`;
       break;
     }
     default: break;
@@ -225,6 +240,12 @@ const extractDocument = async (bytes, callback) => {
       td * {
         margin: 0;
       }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+  }
     `;
 
     for (const className in cssClasses) {
