@@ -13,6 +13,8 @@ const parseStyle = (style) => {
   const columnProperties = getChild(style, "style:table-column-properties");
   const rowProperties = getChild(style, "style:table-row-properties");
   const cellProperties = getChild(style, "style:table-cell-properties");
+  const graphicProperties = getChild(style,"loext:graphic-properties")
+  // loext mean its not part of the spec, yet libreoffice uses that, and libreoffice is basically the spec - anything support it
 
   let css = "";
 
@@ -82,6 +84,37 @@ const parseStyle = (style) => {
     }
 
   }
+  if (graphicProperties){
+    let fillType;
+    if (fillType = graphicProperties["draw:fill"]!='none' && graphicProperties["draw:fill"]){
+      let prop;
+      // solid(draw:fill-color),gradient(draw:style),bitmap(draw:fill-image),none
+      // skip opacity for now
+      if (prop = fillType=="solid" && graphicProperties["draw:fill-color"]){
+        css+=`background-color:${prop}`
+      }
+      if (prop = fillType=="gradient" && graphicProperties["draw:style"]){
+        const startColor = graphicProperties["draw:start-color"];
+        const endColor = graphicProperties["draw:end-color"]
+        // skip intensity for now
+        if (prop === "radial") {
+            const cx = graphicProperties["draw:cx"] || 0.5;
+            const cy = graphicProperties["draw:cy"] || 0.5;
+            css+=(`background: radial-gradient(circle at ${cx * 100}% ${cy * 100}%, ${startColor}, ${endColor});`);
+        }
+        else{
+          css+=`background: linear-gradient(${startColor}, ${endColor});`
+        }
+
+
+
+      }
+
+    }
+
+
+  }
+
 
   return css;
 
