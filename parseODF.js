@@ -150,9 +150,8 @@ const handleElement = async (element, styles, zip, layout) => {
   break;
 }
     case "table:table-column": {
-      htmlTag = "th";
-      outputBefore = "<tr>"
-      outputAfter = "</tr>";
+      htmlTag = "col";
+
       repeat = (Number(element["table:number-columns-repeated"]) || 0) - 1;
       break;
     }
@@ -161,8 +160,8 @@ const handleElement = async (element, styles, zip, layout) => {
     {
       htmlTag = "td";
       repeat = (Number(element["table:number-columns-repeated"]) || 0) - 1;
-      const rowspan = element["table:number-rows-spanned"] || 0;
-      const colspan = element["table:number-columns-spanned"] || 0;
+      const rowspan = element["table:number-rows-spanned"] || 1; // rowspan 0 does not do what you think, see https://developer.mozilla.org/en-US/docs/Web/API/HTMLTableCellElement/rowSpan
+      const colspan = element["table:number-columns-spanned"] || 1;
       attributes += ` rowspan="${rowspan}"`;
       attributes += ` colspan="${colspan}"`;
       content = `<div>${content}</div>`;
@@ -172,6 +171,7 @@ const handleElement = async (element, styles, zip, layout) => {
     {
       htmlTag = "img";
       const mime = element["draw:mime-type"];
+      if (!mime) break; // libreoffice embed objects as a VCL Metafile (VCLMTF). no support for now
       const path = element["xlink:href"];
       const base64 = zip.extractBase64(path);
       attributes += ` src="data:${mime};base64,${base64}"`;
@@ -198,6 +198,12 @@ const handleElement = async (element, styles, zip, layout) => {
       css += `width:${width};height:${height};`;
       break;
     }
+    // blacklist tags
+    case "text:sequence-decls" :
+    case "office:forms":
+      return ''
+
+
     default: break;
   }
 
