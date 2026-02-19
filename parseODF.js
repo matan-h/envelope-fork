@@ -6,7 +6,7 @@ const getChild = (parent, tag) => {
   return parent._children.find(c => c._tag === tag);
 };
 
-const parseStyle = (style) => {
+const parseStyle = (style,stylesBYname) => {
 
   const textProperties = getChild(style, "style:text-properties");
   const paragraphProperties = getChild(style, "style:paragraph-properties");
@@ -105,28 +105,18 @@ const parseStyle = (style) => {
         else{
           css+=`background: linear-gradient(${startColor}, ${endColor});`
         }
-
-
-
       }
 
     }
 
 
   }
-
-
   return css;
-
 };
 
 const handleElement = async (element, styles, zip, layout) => {
-      // look at https://github.com/LibreOffice/libetonyek/blob/c3ac91b8cf6cdb83b777b480c6c000b9542f3add/src/lib/IWORKCollector.cpp#L975 for reference.
-      // they built a library to convert Apple iWork documents to open
-
-
-  const pageWidth = parseFloat(layout["fo:page-width"]);
-  const pageHeight = parseFloat(layout["fo:page-height"]);
+    // look at https://github.com/LibreOffice/libetonyek/blob/c3ac91b8cf6cdb83b777b480c6c000b9542f3add/src/lib/IWORKCollector.cpp#L975 for reference.
+    // they built a library to convert Apple iWork documents to open
 
   let htmlTag = element._tag.split(":").pop();
   let attributes = "";
@@ -252,7 +242,9 @@ const extractDocument = async (bytes, callback) => {
       if (!(className in cssClasses)) {
         cssClasses[className] = "";
       }
-      cssClasses[className] += parseStyle(element);
+      const parent = element['style:parent-style-name']
+
+      cssClasses[className] += ((cssClasses[parent] ?? '')+parseStyle(element,cssClasses));
     }
 
     let css = `<style>
